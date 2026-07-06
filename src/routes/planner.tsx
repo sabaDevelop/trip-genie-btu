@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { generateTrip, TripInputSchema, type TripInput } from "@/lib/trip.functions";
+import { generateTrip, type TripRequest } from "@/lib/trip-api";
 import { tripStore } from "@/lib/trip-store";
 
 export const Route = createFileRoute("/planner")({
@@ -11,125 +10,96 @@ export const Route = createFileRoute("/planner")({
       {
         name: "description",
         content:
-          "Tell TripGenie AI about your trip — destination, days, budget, style, and interests — and get a full itinerary in seconds.",
+          "Describe your dream vacation and TripGenie AI will craft a personalized itinerary in seconds.",
       },
       { property: "og:title", content: "Planner · TripGenie AI" },
       {
         property: "og:description",
-        content: "Build a personalized AI-powered travel itinerary in seconds.",
+        content: "Describe your dream vacation and get a full itinerary in seconds.",
       },
     ],
   }),
   component: PlannerPage,
 });
 
-const STYLES = [
-  "Adventure",
-  "Luxury",
-  "Budget",
-  "Romantic",
-  "Family",
-  "Nature",
-  "Beach",
-] as const;
+const QUICK_IDEAS: { label: string; sentence: string }[] = [
+  { label: "Food Lover", sentence: "I would like to discover authentic local food." },
+  { label: "Photography", sentence: "I would love beautiful photography locations." },
+  { label: "Adventure", sentence: "I want thrilling outdoor adventures." },
+  { label: "Luxury", sentence: "I prefer a luxurious, high-end experience." },
+  { label: "Romantic", sentence: "I'm planning a romantic getaway for two." },
+  { label: "Nature", sentence: "I want to spend time immersed in nature." },
+  { label: "Beach Escape", sentence: "I'd love relaxing time by the sea." },
+  { label: "Family", sentence: "This trip is for the whole family, kids included." },
+];
 
-const TRANSPORT = ["Plane", "Train", "Car"] as const;
-
-const INTERESTS = [
-  "Food",
-  "History",
-  "Museums",
-  "Photography",
-  "Shopping",
-  "Nightlife",
-  "Hiking",
-  "Beaches",
-] as const;
-
-type FormState = {
-  destination: string;
-  days: string;
-  budget: string;
-  travelers: string;
-  style: (typeof STYLES)[number];
-  transportation: (typeof TRANSPORT)[number];
-  interests: string[];
-  notes: string;
-};
-
-const INITIAL: FormState = {
-  destination: "",
-  days: "5",
-  budget: "1500",
-  travelers: "2",
-  style: "Adventure",
-  transportation: "Plane",
-  interests: [],
-  notes: "",
-};
+type Errors = Partial<Record<"destination" | "days" | "description", string>>;
 
 function PlannerPage() {
   const navigate = useNavigate();
-  const generate = useServerFn(generateTrip);
 
-  const [form, setForm] = useState<FormState>(INITIAL);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [destination, setDestination] = useState("");
+  const [days, setDays] = useState("5");
+  const [budget, setBudget] = useState("");
+  const [description, setDescription] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  const update = <K extends keyof FormState>(k: K, v: FormState[K]) => {
-    setForm((f) => ({ ...f, [k]: v }));
-    setErrors((e) => {
-      if (!e[k as string]) return e;
-      const { [k as string]: _, ...rest } = e;
-      return rest;
+  const appendChip = (sentence: string) => {
+    setDescription((prev) => {
+      if (prev.includes(sentence)) return prev;
+      const sep = prev.trim().length === 0 ? "" : prev.endsWith(" ") ? "" : " ";
+      return prev + sep + sentence;
     });
   };
 
-  const toggleInterest = (i: string) => {
-    setForm((f) => ({
-      ...f,
-      interests: f.interests.includes(i)
-        ? f.interests.filter((x) => x !== i)
-        : [...f.interests, i],
-    }));
+  const validate = (): TripRequest | null => {
+    const e: Errors = {};
+    const dest = destination.trim();
+    const desc = description.trim();
+    const daysNum = Number(days);
+    const budgetNum = budget.trim() === "" ? 0 : Number(budget);
+
+    if (!dest) e.destination = "Please enter a destination.";
+    else if (dest.length > 120) e.destination = "Destination is too long.";
+
+    if (!days.trim() || !Number.isFinite(daysNum) || daysNum < 1)
+      e.days = "Enter a number of days (minimum 1).";
+    else if (daysNum > 60) e.days = "That's a very long trip — try 60 days or fewer.";
+
+    if (!desc) e.description = "Tell us a bit about your dream trip.";
+    else if (desc.length > 2000) e.description = "Please keep it under 2000 characters.";
+
+    if (budget.trim() !== "" && (!Number.isFinite(budgetNum) || budgetNum < 0)) {
+      // silently coerce; not shown as an inline error since budget is optional
+    }
+
+    setErrors(e);
+    if (Object.keys(e).length > 0) return null;
+
+    return {
+      destination: dest,
+      days: Math.floor(daysNum),
+      budget: Math.max(0, Math.floor(budgetNum || 0)),
+      description: desc,
+    };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setApiError(null);
-
-    const parsed = TripInputSchema.safeParse({
-      destination: form.destination,
-      days: Number(form.days),
-      budget: Number(form.budget),
-      travelers: Number(form.travelers),
-      style: form.style,
-      transportation: form.transportation,
-      interests: form.interests,
-      notes: form.notes,
-    } satisfies TripInput);
-
-    if (!parsed.success) {
-      const errs: Record<string, string> = {};
-      for (const issue of parsed.error.issues) {
-        const key = String(issue.path[0] ?? "form");
-        if (!errs[key]) errs[key] = issue.message;
-      }
-      setErrors(errs);
-      return;
-    }
+    const payload = validate();
+    if (!payload) return;
 
     setLoading(true);
     try {
-      const itinerary = await generate({ data: parsed.data });
-      tripStore.set({ itinerary, input: parsed.data });
+      const itinerary = await generateTrip(payload);
+      tripStore.set({ itinerary, input: payload });
       navigate({ to: "/results" });
     } catch (err) {
       setApiError(
-        err instanceof Error
-          ? err.message
-          : "Something went wrong generating your trip.",
+        err instanceof Error ? err.message : "Something went wrong. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -143,136 +113,93 @@ function PlannerPage() {
           Design your <span className="gradient-text font-display italic">trip</span>
         </h1>
         <p className="mt-3 text-muted-foreground">
-          The more we know, the better your itinerary will be.
+          Describe your dream vacation — the more detail, the better your itinerary.
         </p>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="glass mt-10 rounded-3xl p-6 sm:p-10"
-        noValidate
-      >
+      <form onSubmit={handleSubmit} className="glass mt-10 rounded-3xl p-6 sm:p-10" noValidate>
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Destination" error={errors.destination} className="sm:col-span-2">
+          <Field label="Destination" required error={errors.destination} className="sm:col-span-2">
             <input
               type="text"
-              value={form.destination}
-              onChange={(e) => update("destination", e.target.value)}
-              placeholder="e.g. Kyoto, Japan"
+              value={destination}
+              onChange={(e) => {
+                setDestination(e.target.value);
+                if (errors.destination) setErrors((x) => ({ ...x, destination: undefined }));
+              }}
+              placeholder="Where would you like to go?"
               className="input"
               maxLength={120}
+              aria-invalid={!!errors.destination}
             />
           </Field>
 
-          <Field label="Number of Days" error={errors.days}>
+          <Field label="Number of Days" required error={errors.days}>
             <input
               type="number"
               min={1}
               max={60}
-              value={form.days}
-              onChange={(e) => update("days", e.target.value)}
+              value={days}
+              onChange={(e) => {
+                setDays(e.target.value);
+                if (errors.days) setErrors((x) => ({ ...x, days: undefined }));
+              }}
               className="input"
+              aria-invalid={!!errors.days}
             />
           </Field>
 
-          <Field label="Budget (USD)" error={errors.budget}>
+          <Field label="Budget (USD)" hint="Optional">
             <input
               type="number"
-              min={1}
-              value={form.budget}
-              onChange={(e) => update("budget", e.target.value)}
+              min={0}
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder="e.g. 1500"
               className="input"
             />
           </Field>
 
-          <Field label="Travelers" error={errors.travelers}>
-            <input
-              type="number"
-              min={1}
-              max={50}
-              value={form.travelers}
-              onChange={(e) => update("travelers", e.target.value)}
-              className="input"
+          <Field label="Dream Trip" required error={errors.description} className="sm:col-span-2">
+            <textarea
+              value={description}
+              onChange={(e) => {
+                setDescription(e.target.value);
+                if (errors.description) setErrors((x) => ({ ...x, description: undefined }));
+              }}
+              placeholder="Describe your ideal vacation. e.g. I want to explore local culture, avoid tourist crowds, eat authentic food, take beautiful photos, relax by the sea and discover hidden places."
+              rows={6}
+              maxLength={2000}
+              className="input resize-none"
+              aria-invalid={!!errors.description}
             />
-          </Field>
-
-          <Field label="Travel Style" error={errors.style}>
-            <select
-              value={form.style}
-              onChange={(e) =>
-                update("style", e.target.value as FormState["style"])
-              }
-              className="input"
-            >
-              {STYLES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Transportation" error={errors.transportation} className="sm:col-span-2">
-            <select
-              value={form.transportation}
-              onChange={(e) =>
-                update(
-                  "transportation",
-                  e.target.value as FormState["transportation"],
-                )
-              }
-              className="input"
-            >
-              {TRANSPORT.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Interests" className="sm:col-span-2">
-            <div className="flex flex-wrap gap-2">
-              {INTERESTS.map((i) => {
-                const active = form.interests.includes(i);
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => toggleInterest(i)}
-                    className={
-                      "rounded-full border px-4 py-1.5 text-sm transition " +
-                      (active
-                        ? "border-transparent btn-primary"
-                        : "border-border bg-white/60 text-foreground hover:bg-white")
-                    }
-                    aria-pressed={active}
-                  >
-                    {i}
-                  </button>
-                );
-              })}
+            <div className="mt-1 text-right text-xs text-muted-foreground">
+              {description.length}/2000
             </div>
           </Field>
 
-          <Field
-            label="Additional Notes"
-            error={errors.notes}
-            className="sm:col-span-2"
-          >
-            <textarea
-              value={form.notes}
-              onChange={(e) => update("notes", e.target.value)}
-              placeholder="Describe your dream vacation or any special requests."
-              rows={5}
-              maxLength={2000}
-              className="input resize-none"
-            />
-          </Field>
+          <div className="sm:col-span-2">
+            <div className="mb-2 text-sm font-medium text-foreground/80">Quick Ideas</div>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_IDEAS.map((c) => (
+                <button
+                  key={c.label}
+                  type="button"
+                  onClick={() => appendChip(c.sentence)}
+                  className="rounded-full border border-border bg-white/60 px-4 py-1.5 text-sm text-foreground transition hover:bg-white hover:-translate-y-0.5"
+                >
+                  + {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {apiError && (
-          <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div
+            role="alert"
+            className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
             {apiError}
           </div>
         )}
@@ -281,7 +208,7 @@ function PlannerPage() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium"
+            className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium disabled:opacity-70"
           >
             {loading ? (
               <>
@@ -321,23 +248,29 @@ function PlannerPage() {
 function Field({
   label,
   error,
+  hint,
+  required,
   className = "",
   children,
 }: {
   label: string;
   error?: string;
+  hint?: string;
+  required?: boolean;
   className?: string;
   children: React.ReactNode;
 }) {
   return (
     <label className={"block " + className}>
-      <span className="mb-1.5 block text-sm font-medium text-foreground/80">
-        {label}
+      <span className="mb-1.5 flex items-center justify-between text-sm font-medium text-foreground/80">
+        <span>
+          {label}
+          {required && <span className="ml-0.5 text-destructive">*</span>}
+        </span>
+        {hint && <span className="text-xs font-normal text-muted-foreground">{hint}</span>}
       </span>
       {children}
-      {error && (
-        <span className="mt-1 block text-xs text-destructive">{error}</span>
-      )}
+      {error && <span className="mt-1 block text-xs text-destructive">{error}</span>}
     </label>
   );
 }

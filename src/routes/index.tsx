@@ -17,8 +17,8 @@ function HomePage() {
           <span className="gradient-text font-display italic">with AI</span>
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">
-          Generate personalized travel itineraries in seconds — tailored to your
-          style, budget, and interests.
+          Describe your dream vacation and receive a personalized travel
+          itinerary in seconds.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Link

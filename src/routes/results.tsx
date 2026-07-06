@@ -17,9 +17,7 @@ function ResultsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!itinerary) {
-      navigate({ to: "/planner" });
-    }
+    if (!itinerary) navigate({ to: "/planner" });
   }, [itinerary, navigate]);
 
   if (!itinerary || !input) {
@@ -46,8 +44,8 @@ function ResultsPage() {
           {input.destination}
         </h1>
         <p className="mt-2 text-muted-foreground">
-          {input.days} days · {input.travelers} traveler
-          {input.travelers > 1 ? "s" : ""} · {input.style} · ${input.budget} budget
+          {input.days} {input.days === 1 ? "day" : "days"}
+          {input.budget > 0 ? ` · $${input.budget.toLocaleString()} budget` : ""}
         </p>
       </div>
 
@@ -57,60 +55,39 @@ function ResultsPage() {
         </p>
       </Section>
 
-      <Section
-        title="Daily Itinerary"
-        show={!!itinerary.days && itinerary.days.length > 0}
-      >
+      <Section title="Daily Itinerary" show={!!itinerary.days?.length}>
         <ol className="space-y-4">
-          {itinerary.days?.map((d) => (
+          {itinerary.days?.map((d, idx) => (
             <li
-              key={d.day}
+              key={idx}
               className="rounded-2xl border border-border/60 bg-white/60 p-5"
             >
               <div className="flex items-baseline gap-3">
                 <span className="grid h-8 w-8 place-items-center rounded-xl btn-primary text-xs font-semibold">
-                  {String(d.day).padStart(2, "0")}
+                  {String(d.day ?? idx + 1).padStart(2, "0")}
                 </span>
-                <h3 className="text-lg font-semibold">{d.title}</h3>
+                <h3 className="text-lg font-semibold">
+                  {d.title || `Day ${d.day ?? idx + 1}`}
+                </h3>
               </div>
-              <ul className="mt-3 space-y-1.5 pl-11 text-sm text-foreground/80">
-                {d.activities.map((a, i) => (
-                  <li key={i} className="list-disc">
-                    {a}
-                  </li>
-                ))}
-              </ul>
+              {d.activities && d.activities.length > 0 && (
+                <ul className="mt-3 space-y-1.5 pl-11 text-sm text-foreground/80">
+                  {d.activities.map((a, i) => (
+                    <li key={i} className="list-disc">
+                      {a}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ol>
       </Section>
 
-      <Section
-        title="Budget Tips"
-        show={!!itinerary.budgetTips?.length}
-      >
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {itinerary.budgetTips?.map((t, i) => (
-            <li
-              key={i}
-              className="rounded-xl border border-border/60 bg-white/60 p-3 text-sm"
-            >
-              💡 {t}
-            </li>
-          ))}
-        </ul>
-      </Section>
-
-      <Section
-        title="Recommended Restaurants"
-        show={!!itinerary.restaurants?.length}
-      >
+      <Section title="Recommended Restaurants" show={!!itinerary.restaurants?.length}>
         <div className="grid gap-3 sm:grid-cols-2">
           {itinerary.restaurants?.map((r, i) => (
-            <div
-              key={i}
-              className="rounded-2xl border border-border/60 bg-white/60 p-4"
-            >
+            <div key={i} className="rounded-2xl border border-border/60 bg-white/60 p-4">
               <div className="flex items-center justify-between gap-3">
                 <h4 className="font-semibold">{r.name}</h4>
                 {r.cuisine && (
@@ -130,14 +107,11 @@ function ResultsPage() {
       <Section title="Hidden Gems" show={!!itinerary.hiddenGems?.length}>
         <div className="space-y-3">
           {itinerary.hiddenGems?.map((g, i) => (
-            <div
-              key={i}
-              className="rounded-2xl border border-border/60 bg-white/60 p-4"
-            >
+            <div key={i} className="rounded-2xl border border-border/60 bg-white/60 p-4">
               <h4 className="font-semibold">✨ {g.name}</h4>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {g.description}
-              </p>
+              {g.description && (
+                <p className="mt-1 text-sm text-muted-foreground">{g.description}</p>
+              )}
             </div>
           ))}
         </div>
@@ -174,13 +148,13 @@ function ResultsPage() {
           onClick={generateAgain}
           className="btn-primary inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium"
         >
-          Generate Again
+          Generate Another Trip
         </button>
         <Link
           to="/"
           className="btn-ghost inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium"
         >
-          Go Back
+          Go Home
         </Link>
       </div>
     </div>
