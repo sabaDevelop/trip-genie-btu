@@ -69,7 +69,7 @@ function normalize(raw: unknown): Itinerary {
             day: typeof o.day === "number" ? o.day : i + 1,
             title: typeof o.title === "string" ? o.title : `Day ${i + 1}`,
             activities,
-          } satisfies ItineraryDay;
+          };
         })
         .filter((x): x is ItineraryDay => x !== null)
     : undefined;
@@ -90,7 +90,7 @@ function normalize(raw: unknown): Itinerary {
                 : typeof o.description === "string"
                   ? (o.description as string)
                   : undefined,
-          } satisfies Restaurant;
+          };
         })
         .filter((x): x is Restaurant => x !== null)
     : undefined;
@@ -106,7 +106,7 @@ function normalize(raw: unknown): Itinerary {
             name,
             description:
               typeof o.description === "string" ? o.description : undefined,
-          } satisfies HiddenGem;
+          };
         })
         .filter((x): x is HiddenGem => x !== null)
     : undefined;
