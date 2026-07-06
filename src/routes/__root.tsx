@@ -88,6 +88,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "TripGenie AI — Plan your perfect trip with AI" },
+      { name: "description", content: "TripGenie AI generates personalized, day-by-day travel itineraries in seconds. Tell us your destination, style, and budget — get a full plan instantly." },
+      { property: "og:description", content: "TripGenie AI generates personalized, day-by-day travel itineraries in seconds. Tell us your destination, style, and budget — get a full plan instantly." },
+      { name: "twitter:description", content: "TripGenie AI generates personalized, day-by-day travel itineraries in seconds. Tell us your destination, style, and budget — get a full plan instantly." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3572e022-fe15-4d15-8e9a-bdbc249e409c/id-preview-effa0641--681fd80f-3c3b-4685-b270-56620f2995ab.lovable.app-1783378365972.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/3572e022-fe15-4d15-8e9a-bdbc249e409c/id-preview-effa0641--681fd80f-3c3b-4685-b270-56620f2995ab.lovable.app-1783378365972.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
