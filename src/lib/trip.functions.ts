@@ -80,12 +80,12 @@ Return a comprehensive itinerary with:
 Be specific, use real place names when possible, and keep suggestions realistic for the budget.`;
 
     try {
-      const { experimental_output } = await generateText({
+      const { output } = await generateText({
         model: gateway("google/gemini-2.5-flash"),
-        experimental_output: Output.object({ schema: ItinerarySchema }),
+        output: Output.object({ schema: ItinerarySchema }),
         prompt,
       });
-      return experimental_output;
+      return output;
     } catch (err) {
       const status = (err as { status?: number; statusCode?: number })?.status ??
         (err as { statusCode?: number })?.statusCode;
