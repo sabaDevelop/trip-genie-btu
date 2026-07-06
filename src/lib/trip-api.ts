@@ -97,7 +97,7 @@ function normalize(raw: unknown): Itinerary {
 
   const hiddenGems = Array.isArray(r.hiddenGems ?? r.hidden_gems)
     ? ((r.hiddenGems ?? r.hidden_gems) as unknown[])
-        .map((x): Restaurant | null => {
+        .map((x): HiddenGem | null => {
           if (!x || typeof x !== "object") return null;
           const o = x as Record<string, unknown>;
           const name = typeof o.name === "string" ? o.name : undefined;
