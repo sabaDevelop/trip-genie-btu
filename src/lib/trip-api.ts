@@ -57,7 +57,7 @@ function normalize(raw: unknown): Itinerary {
 
   const days = Array.isArray(r.days ?? r.dailyItinerary ?? r.itineraryDays)
     ? ((r.days ?? r.dailyItinerary ?? r.itineraryDays) as unknown[])
-        .map((d, i) => {
+        .map((d, i): ItineraryDay | null => {
           if (!d || typeof d !== "object") return null;
           const o = d as Record<string, unknown>;
           const activities =
@@ -76,7 +76,7 @@ function normalize(raw: unknown): Itinerary {
 
   const restaurants = Array.isArray(r.restaurants)
     ? (r.restaurants as unknown[])
-        .map((x) => {
+        .map((x): Restaurant | null => {
           if (!x || typeof x !== "object") return null;
           const o = x as Record<string, unknown>;
           const name = typeof o.name === "string" ? o.name : undefined;
@@ -97,7 +97,7 @@ function normalize(raw: unknown): Itinerary {
 
   const hiddenGems = Array.isArray(r.hiddenGems ?? r.hidden_gems)
     ? ((r.hiddenGems ?? r.hidden_gems) as unknown[])
-        .map((x) => {
+        .map((x): Restaurant | null => {
           if (!x || typeof x !== "object") return null;
           const o = x as Record<string, unknown>;
           const name = typeof o.name === "string" ? o.name : undefined;
