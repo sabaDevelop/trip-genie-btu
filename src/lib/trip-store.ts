@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from "react";
-import type { Itinerary, TripInput } from "./trip.functions";
+import type { Itinerary, TripRequest } from "./trip-api";
 
 type State = {
   itinerary: Itinerary | null;
-  input: TripInput | null;
+  input: TripRequest | null;
 };
 
 let state: State = { itinerary: null, input: null };
